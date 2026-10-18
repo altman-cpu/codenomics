@@ -1,33 +1,82 @@
 name: ci
 
+# Keep PR validation on `pull_request`, not `pull_request_target`: PR code is untrusted.
 on:
   push:
     branches: [main]
   pull_request:
 
+# No job should inherit write access. Jobs opt in to the read-only checkout scope.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  workflow-security:
+    name: workflow security (zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Audit GitHub Actions workflows
+        uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        with:
+          advanced-security: false
+          online-audits: true
+          version: v1.31.1
+
   test:
+    name: tests
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         node: [20, 22, 24]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
       - run: npm run typecheck
       - run: npm test
-      - name: pack + smoke test the tarball
-        run: |
-          npm pack
-          mkdir -p /tmp/codenomics-smoke && cd /tmp/codenomics-smoke
-          npm init -y >/dev/null
-          npm install "$GITHUB_WORKSPACE"/codenomics-*.tgz
-          npx codenomics --version
-          npx codenomics --help
-          CODENOMICS_DATA_DIR=/tmp/codenomics-smoke/data npx codenomics index || true
+      - name: Pack + smoke test the tarball
         shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --ignore-scripts
+          smoke_dir="$(mktemp -d "$RUNNER_TEMP/codenomics-smoke.XXXXXX")"
+          trap 'rm -rf "$smoke_dir"' EXIT
+          tar -tzf "$GITHUB_WORKSPACE"/codenomics-*.tgz > "$smoke_dir/package-files.txt"
+          grep -Fxq 'package/package.json' "$smoke_dir/package-files.txt"
+          grep -Fxq 'package/dist/cli/main.js' "$smoke_dir/package-files.txt"
+          if grep -Eq '(^|/)\.\.(/|$)|^/' "$smoke_dir/package-files.txt"; then
+            echo 'Unsafe path found in npm tarball' >&2
+            exit 1
+          fi
+
+          # Keep the CLI smoke test away from any runner-provided home data.
+          export HOME="$smoke_dir/home"
+          export CODENOMICS_DATA_DIR="$smoke_dir/data"
+          export CODENOMICS_ACCEPT_DISCLOSURE=1
+          export CODENOMICS_NO_UPDATE_CHECK=1
+          mkdir -p "$HOME"
+
+          node "$GITHUB_WORKSPACE/dist/cli/main.js" --version
+          node "$GITHUB_WORKSPACE/dist/cli/main.js" --help
+          node "$GITHUB_WORKSPACE/dist/cli/main.js" index
