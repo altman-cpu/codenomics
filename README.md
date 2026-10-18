@@ -116,14 +116,19 @@ Contributions welcome — especially fixtures from agent versions we haven't
 seen. `scripts/scrub-fixture.mjs` redacts a transcript so you can share its
 *shape* without sharing its content.
 
-## Security analysis references
+## Security and privacy references
 
-For defensive triage of CI/CD logs or artifacts, [CyberChef](https://gchq.github.io/CyberChef/)
-can help inspect and normalize sanitized encoded text. Keep secrets and customer
-data out of hosted analysis tools; use a local copy when handling sensitive
-material, and inspect decoded output as data rather than executing it. The
-[Awesome CI/CD Attacks](https://github.com/TupleType/awesome-cicd-attacks) list
-is a threat-research reference for reviewing pipeline defenses.
+- [CyberChef](https://gchq.github.io/CyberChef/) can help inspect and normalize
+  sanitized CI/CD logs or encoded text during defensive triage. Keep secrets and
+  customer data out of hosted analysis tools; use a local copy for sensitive
+  material, and inspect decoded output as data rather than executing it.
+- [Awesome CI/CD Attacks](https://github.com/TupleType/awesome-cicd-attacks) is a
+  threat-research reference for reviewing pipeline defenses.
+- [Awesome Tor](https://github.com/polycarbohydrate/awesome-tor) is a community
+  curated Tor resource list. Verify individual projects and consult the [Tor
+  Project manual](https://tb-manual.torproject.org/) for official guidance; the
+  list is independent and does not guarantee the quality or suitability of its
+  entries.
 
-These are optional references only; Codenomics does not bundle either tool or
-send data to them.
+These are optional references only; Codenomics does not bundle or integrate
+these tools and does not send app data to them.
