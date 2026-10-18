@@ -115,3 +115,15 @@ and every release becomes plain MIT two years after it ships.
 Contributions welcome — especially fixtures from agent versions we haven't
 seen. `scripts/scrub-fixture.mjs` redacts a transcript so you can share its
 *shape* without sharing its content.
+
+## Security analysis references
+
+For defensive triage of CI/CD logs or artifacts, [CyberChef](https://gchq.github.io/CyberChef/)
+can help inspect and normalize sanitized encoded text. Keep secrets and customer
+data out of hosted analysis tools; use a local copy when handling sensitive
+material, and inspect decoded output as data rather than executing it. The
+[Awesome CI/CD Attacks](https://github.com/TupleType/awesome-cicd-attacks) list
+is a threat-research reference for reviewing pipeline defenses.
+
+These are optional references only; Codenomics does not bundle either tool or
+send data to them.
